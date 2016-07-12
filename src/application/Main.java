@@ -148,7 +148,7 @@ public class Main extends Application {
 		diagrammeMoyenne.getData().clear();
 		moyenne.getChildren().clear();
 		ObservableList<PieChart.Data> pieChartData = FXCollections.observableArrayList();
-		Iterator<Activite> i = this.activites.iterator();
+		Iterator<Activite> i = this.activitesChoisies.iterator();
 	        while (i.hasNext()){
 	        	Activite activite = i.next();
 	        	//defining a series
@@ -189,7 +189,7 @@ public class Main extends Application {
 	
 	private void miseAJourEnregistrements() {
 		diagrammeEnregistrements.getData().clear();
-        Iterator<Activite> i = this.activites.iterator();
+        Iterator<Activite> i = this.activitesChoisies.iterator();
         while (i.hasNext()){
         	Activite activite = i.next();
         	//defining a series
@@ -198,6 +198,7 @@ public class Main extends Application {
             Iterator<Entry<Jour,Integer>> is = activite.dureeParJour.entrySet().iterator();
             while (is.hasNext()){
             	Entry<Jour,Integer> e= is.next();
+            	System.out.println("jour "+e.getKey().toNumber() + " valeur " + e.getValue() );
             	//populating the series with data
                 series.getData().add(new XYChart.Data<Number,Number>(e.getKey().toNumber(), e.getValue()));
             }
