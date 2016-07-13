@@ -20,6 +20,7 @@ import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
 import javafx.scene.Group;
 import javafx.scene.Scene;
+import javafx.scene.chart.Axis;
 import javafx.scene.chart.BarChart;
 import javafx.scene.chart.CategoryAxis;
 import javafx.scene.chart.LineChart;
@@ -55,7 +56,7 @@ public class Main extends Application {
 	private  Set<Activite> activites=  new HashSet<Activite>();;
 	private Set<Activite> activitesChoisies = new HashSet<Activite>();
 	private BarChart<String,Number> diagrammeDuJour;
-	private LineChart<Number,Number> diagrammeEnregistrements;
+	private LineChart<String, Number> diagrammeEnregistrements;
 	private PieChart diagrammeMoyenne ;
 	private String xmlAdresseFichier ;
 	@Override
@@ -160,25 +161,26 @@ public class Main extends Application {
 	}
 	
 	private void ajoutEnregistrements(Group enregistrements) {
+        
 		//defining the axes
-        final NumberAxis xAxis = new NumberAxis();
+        final Axis<String> xAxis = new CategoryAxis();
         final NumberAxis yAxis = new NumberAxis();
         xAxis.setLabel("Jour");
         //creating the chart
-        diagrammeEnregistrements = new LineChart<Number,Number>(xAxis,yAxis);
+        diagrammeEnregistrements = new LineChart<String,Number>(xAxis,yAxis);
                 
         diagrammeEnregistrements.setTitle("Enregistrements");
         Iterator<Activite> i = this.activites.iterator();
         while (i.hasNext()){
         	Activite activite = i.next();
         	//defining a series
-            XYChart.Series<Number,Number> series = new XYChart.Series<Number,Number>();
+            XYChart.Series<String,Number> series = new XYChart.Series<String,Number>();
             series.setName(activite.nom);
             Iterator<Entry<Jour,Integer>> is = activite.dureeParJour.entrySet().iterator();
             while (is.hasNext()){
             	Entry<Jour,Integer> e= is.next();
             	//populating the series with data
-                series.getData().add(new XYChart.Data<Number,Number>(e.getKey().toNumber(), e.getValue()));
+                series.getData().add(new XYChart.Data<String,Number>(e.getKey().toString(), e.getValue()));
             }
             diagrammeEnregistrements.getData().add(series);
         }
@@ -193,14 +195,13 @@ public class Main extends Application {
         while (i.hasNext()){
         	Activite activite = i.next();
         	//defining a series
-            XYChart.Series<Number,Number> series = new XYChart.Series<Number,Number>();
+            XYChart.Series<String,Number> series = new XYChart.Series<String,Number>();
             series.setName(activite.nom);
             Iterator<Entry<Jour,Integer>> is = activite.dureeParJour.entrySet().iterator();
             while (is.hasNext()){
             	Entry<Jour,Integer> e= is.next();
-            	System.out.println("jour "+e.getKey().toNumber() + " valeur " + e.getValue() );
             	//populating the series with data
-                series.getData().add(new XYChart.Data<Number,Number>(e.getKey().toNumber(), e.getValue()));
+                series.getData().add(new XYChart.Data<String,Number>(e.getKey().toString(), e.getValue()));
             }
             diagrammeEnregistrements.getData().add(series);
         }		

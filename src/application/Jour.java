@@ -9,7 +9,7 @@ public class Jour {
 	
 	public Jour(Calendar date){
 		jour = date.get(Calendar.DAY_OF_MONTH);
-		mois = date.get(Calendar.MONTH);
+		mois = date.get(Calendar.MONTH)+1;
 		annee = date.get(Calendar.YEAR);
 	}
 
@@ -21,7 +21,7 @@ public class Jour {
 
 	@Override
 	public String toString() {
-		return "Jour [jour=" + jour + ", mois=" + mois + ", annee=" + annee + "]";
+		return ""+annee+"/"+mois+"/"+jour;//				"Jour [jour=" + jour + ", mois=" + mois + ", annee=" + annee + "]";
 	}
 
 	@Override
