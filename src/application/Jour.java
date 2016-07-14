@@ -21,7 +21,7 @@ public class Jour {
 
 	@Override
 	public String toString() {
-		return ""+annee+"/"+mois+"/"+jour;//				"Jour [jour=" + jour + ", mois=" + mois + ", annee=" + annee + "]";
+		return annee+"/"+mois+"/"+jour;
 	}
 
 	@Override

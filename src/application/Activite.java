@@ -59,16 +59,18 @@ public class Activite {
 
 	// Arret du chrono
 	void stopperChrono() {
-		long chrono2 = System.currentTimeMillis() ;
-		dureeDuJour += (chrono2-chrono)/1000;
-		Calendar date = Calendar.getInstance(Locale.FRENCH);
-		this.dureeParJour.put(new Jour(date), (int) dureeDuJour);
-		int somme = 0;
-		Iterator<Integer> i = this.dureeParJour.values().iterator();
-		while(i.hasNext()){
-			somme+=(int)i.next();
+		if (estLanceChrono){
+			long chrono2 = System.currentTimeMillis() ;
+			dureeDuJour += (chrono2-chrono)/1000;
+			Calendar date = Calendar.getInstance(Locale.FRENCH);
+			this.dureeParJour.put(new Jour(date), (int) dureeDuJour);
+			int somme = 0;
+			Iterator<Integer> i = this.dureeParJour.values().iterator();
+			while(i.hasNext()){
+				somme+=(int)i.next();
+			}
+			dureeMoyenne = somme/this.dureeParJour.size();
 		}
-		dureeMoyenne = somme/this.dureeParJour.size();
 	}
 
 	public void compter() {

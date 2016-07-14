@@ -39,6 +39,7 @@ import javafx.scene.control.TabPane;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
+import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
@@ -53,12 +54,23 @@ import org.xml.sax.*;
 import org.w3c.dom.*;
 
 public class Main extends Application {
-	private  Set<Activite> activites=  new HashSet<Activite>();;
-	private Set<Activite> activitesChoisies = new HashSet<Activite>();
+	private HashMap<String,Activite> activites=  new HashMap<String,Activite>();
+	private Set<String> activitesChoisies = new HashSet<String>();
+	
 	private BarChart<String,Number> diagrammeDuJour;
 	private LineChart<String, Number> diagrammeEnregistrements;
 	private PieChart diagrammeMoyenne ;
-	private String xmlAdresseFichier ;
+	
+	private String xmlAdresseFichier  = "enregistrementsActivites.xml";
+	
+	private GridPane majActivites = new GridPane();
+	private GridPane grilleActivites = new GridPane();
+    private Group activitesDuJour = new Group();
+    private Group enregistrements = new Group();
+	private Group moyenne = new Group();
+	
+	private MenuButton menuButton = new MenuButton ("Ajouter une activité"); 
+	
 	@Override
 	public void start(Stage primaryStage) {
         // définit la largeur et la hauteur de la fenêtre
@@ -69,12 +81,15 @@ public class Main extends Application {
         primaryStage.setTitle("Compteur d'activités");
         
         // initialisation des variables
-        activites.add(new Activite("Travail","C:/Users/asus/workspace/CompteurdActivitesJavaFX/src/application/ressources/travail.jpg"));
-		activites.add(new Activite("Jeux","C:/Users/asus/workspace/CompteurdActivitesJavaFX/src/application/ressources/jeux.jpg"));
-		activites.add(new Activite("Détente","C:/Users/asus/workspace/CompteurdActivitesJavaFX/src/application/ressources/détente.jpg"));
-	
-		this.xmlAdresseFichier = "enregistrementsActivites.xml";
-		
+        activites.put("Travail",new Activite("Travail","C:/Users/asus/workspace/CompteurdActivitesJavaFX/src/application/ressources/travail.jpg"));
+		activites.put("Jeux",new Activite("Jeux","C:/Users/asus/workspace/CompteurdActivitesJavaFX/src/application/ressources/jeux.jpg"));
+		activites.put("Détente",new Activite("Détente","C:/Users/asus/workspace/CompteurdActivitesJavaFX/src/application/ressources/détente.jpg"));
+
+		Iterator<Activite> i = this.activites.values().iterator(); 
+		while (i.hasNext()){
+			Activite activite = i.next();
+			System.out.println("activite initiales"+activite.toString());
+		}
         // la racine du sceneGraph est le root
         Group root = new Group();
         Scene scene = new Scene(root,1200,800);
@@ -93,32 +108,27 @@ public class Main extends Application {
         tab1.setContent(borderPane);
 
         // ajout d'un diagramme d'activités avec moyenne à la droite du border pane
-        Group activitesDuJour = new Group();
         borderPane.setRight(activitesDuJour);
-        ajoutDiagrammeDuJour(activitesDuJour);    
+        ajoutDiagrammeDuJour();    
 
         // affichage de la moyenne des durées d'activités sous forme de diagramme dans l'onglet moyenne
-        Group moyenne = new Group();
         tab3.setContent(moyenne);
-        ajoutMoyenne(moyenne);
+        ajoutMoyenne();
         
         // ajout des activités à la gauche du border pane
-        GridPane grilleActivites = new GridPane();
         borderPane.setLeft(grilleActivites);
-        ajoutActivites(grilleActivites,moyenne);
+        ajoutActivites();
         
         // ajout de boutons en bas du border pane pour l'ajout d'activités et changer de vue
-        GridPane majActivites = new GridPane();
         borderPane.setBottom(majActivites);
-        ajoutBoutonsMaj(majActivites,this.activitesChoisies,this.activites,grilleActivites,moyenne);
+        ajoutBoutonsMaj();
         
         // affichage des enregistrements précédents sous forme de diagramme dans l'onglet enregistrements
-        Group enregistrements = new Group();
         tab2.setContent(enregistrements);
-        ajoutEnregistrements(enregistrements);
+        ajoutEnregistrements();
         
 
-        readXML(xmlAdresseFichier,grilleActivites,moyenne);
+        readXML(xmlAdresseFichier);
         // ajout des onglets à la racine du SceneGraph
 		root.getChildren().add(tabPane);
         // ajout de la scène à la fenêtre
@@ -132,9 +142,9 @@ public class Main extends Application {
         }); 
 	}
 	
-	private void ajoutMoyenne(Group moyenne) { 
+	private void ajoutMoyenne() { 
 		ObservableList<PieChart.Data> pieChartData = FXCollections.observableArrayList();
-		Iterator<Activite> i = this.activites.iterator();
+		Iterator<Activite> i = this.activites.values().iterator();
 	        while (i.hasNext()){
 	        	Activite activite = i.next();
 	        	//defining a series
@@ -145,11 +155,11 @@ public class Main extends Application {
         moyenne.getChildren().add(diagrammeMoyenne);	
 	}
 	
-	private void miseAJourMoyenne(Group moyenne) { 
+	private void miseAJourMoyenne() { 
 		diagrammeMoyenne.getData().clear();
 		moyenne.getChildren().clear();
 		ObservableList<PieChart.Data> pieChartData = FXCollections.observableArrayList();
-		Iterator<Activite> i = this.activitesChoisies.iterator();
+		Iterator<Activite> i = this.activites.values().iterator();
 	        while (i.hasNext()){
 	        	Activite activite = i.next();
 	        	//defining a series
@@ -160,7 +170,7 @@ public class Main extends Application {
         moyenne.getChildren().add(diagrammeMoyenne);	
 	}
 	
-	private void ajoutEnregistrements(Group enregistrements) {
+	private void ajoutEnregistrements() {
         
 		//defining the axes
         final Axis<String> xAxis = new CategoryAxis();
@@ -170,7 +180,7 @@ public class Main extends Application {
         diagrammeEnregistrements = new LineChart<String,Number>(xAxis,yAxis);
                 
         diagrammeEnregistrements.setTitle("Enregistrements");
-        Iterator<Activite> i = this.activites.iterator();
+        Iterator<Activite> i = this.activites.values().iterator();
         while (i.hasNext()){
         	Activite activite = i.next();
         	//defining a series
@@ -186,12 +196,12 @@ public class Main extends Application {
         }
         
         enregistrements.getChildren().add(diagrammeEnregistrements);
-		
+		 
 	}
 	
 	private void miseAJourEnregistrements() {
 		diagrammeEnregistrements.getData().clear();
-        Iterator<Activite> i = this.activitesChoisies.iterator();
+        Iterator<Activite> i = this.activites.values().iterator();
         while (i.hasNext()){
         	Activite activite = i.next();
         	//defining a series
@@ -210,10 +220,10 @@ public class Main extends Application {
 	 * Ajout des boutons permettant l'ajout d'activités et de changer de vue
 	 * Nécessite une liste des activités possibles et une liste des activités choisies décuplées en sous-activités
 	 */
-	private void ajoutBoutonsMaj(GridPane majActivites,Set<Activite> activitesChoisies2,Set<Activite> activites, GridPane grilleActivites,Group moyenne ) {
-
-        final MenuButton menuButton = new MenuButton ("Ajouter une activité"); 
-		final MenuItem nouvelleActivite = new MenuItem("Autre...");  
+	private void ajoutBoutonsMaj( ) {
+		majActivites.getChildren().clear();
+		menuButton.getItems().clear();
+        final MenuItem nouvelleActivite = new MenuItem("Autre...");  
 		nouvelleActivite.setOnAction(new EventHandler<ActionEvent>() {
 			@Override public void handle(ActionEvent e){
 				final FileChooser dialogFileChooser = new FileChooser(); 
@@ -229,11 +239,14 @@ public class Main extends Application {
 					result.ifPresent(guestString -> {  
 						// Effectuer la sauvegarde. 
 						Activite activite = new Activite(guestString,file);
-						final MenuItem activiteItem = new MenuItem(activite.nom);
-				        menuButton.getItems().add(activiteItem);
-				        activites.add(activite);
-						activitesChoisies2.add(activite);
-						ajoutActivites(grilleActivites,moyenne);
+						//final MenuItem activiteItem = new MenuItem(activite.nom);
+				        //menuButton.getItems().add(activiteItem);
+				        activites.put(activite.nom,activite);
+						activitesChoisies.add(activite.nom);
+						ajoutActivites();
+						// mettre à jour l'affichage
+						miseAJourDiagrammeDuJour();
+						ajoutBoutonsMaj();
 					});
 				}
 			};
@@ -241,17 +254,21 @@ public class Main extends Application {
         menuButton.getItems().add(nouvelleActivite);
         menuButton.getItems().add( new SeparatorMenuItem());
 		// ajout du bouton pour ajouter des activités
-		Iterator<Activite> i = this.activites.iterator(); 
+		Iterator<Activite> i = this.activites.values().iterator(); 
 		while (i.hasNext()){
 			Activite activite = i.next();
+			System.out.println("activite du menu"+activite.toString());
 			final MenuItem activiteItem = new MenuItem(activite.nom);
 	        menuButton.getItems().add(activiteItem);
 	        // ajout des actions d'ajout sur les items du menu
             activiteItem.setOnAction(new EventHandler<ActionEvent>() {
                 @Override public void handle(ActionEvent e) {
                 	//ajouter l'activité sélectionnée
-                	activitesChoisies2.add(activite);
-                	ajoutActivites(grilleActivites,moyenne);
+                	activitesChoisies.add(activite.nom);
+                	ajoutActivites();
+					// mettre à jour l'affichage
+					miseAJourDiagrammeDuJour();
+					ajoutBoutonsMaj();
                 }
             });
 		}
@@ -259,12 +276,12 @@ public class Main extends Application {
         majActivites.getChildren().add(menuButton);
 
         // ajout du bouton pour changer de vue
-        Iterator<Activite> i2 = this.activitesChoisies.iterator();
+        Iterator<String> i2 = this.activitesChoisies.iterator();
         final MenuButton menuButton2 = new MenuButton ("Changer de vue");  
 		while (i2.hasNext()){
-			Activite activite = i2.next();
+			Activite activite = this.activites.get(i2.next());
 			final MenuItem activiteItem = new MenuItem(activite.nom);
-	        menuButton.getItems().add(activiteItem);
+	        menuButton2.getItems().add(activiteItem);
 		}
         GridPane.setConstraints(menuButton2,1,0);
         majActivites.getChildren().add(menuButton2);
@@ -275,7 +292,7 @@ public class Main extends Application {
 	 * Ajout du diagramme affichant les activités du jour et la moyenne des jours passés
 	 * nécessite les valeurs des compteurs de la journée et les moyennes des compteurs précédents
 	 */
-	private void ajoutDiagrammeDuJour(Group activitesDuJour) {
+	private void ajoutDiagrammeDuJour() {
 		final CategoryAxis xAxis = new CategoryAxis();
         final NumberAxis yAxis = new NumberAxis();
         diagrammeDuJour = new BarChart<String,Number>(xAxis,yAxis);
@@ -283,9 +300,9 @@ public class Main extends Application {
         diagrammeDuJour.setTitle("Bilan d'activités");
         xAxis.setLabel("Date");       
         yAxis.setLabel("Durée");
-        Iterator<Activite> i = this.activitesChoisies.iterator();
+        Iterator<String> i = this.activitesChoisies.iterator();
         while(i.hasNext()){
-        	Activite activiteChoisie = i.next();
+        	Activite activiteChoisie = this.activites.get(i.next());
         	XYChart.Series<String,Number> series = new XYChart.Series<String,Number>();
             series.setName(activiteChoisie.nom);       
             series.getData().add(new XYChart.Data<String,Number>("aujourd'hui", activiteChoisie.dureeDuJour));
@@ -297,9 +314,9 @@ public class Main extends Application {
 
 	private void miseAJourDiagrammeDuJour(){
 		diagrammeDuJour.getData().clear();
-        Iterator<Activite> i = this.activitesChoisies.iterator();
+        Iterator<String> i = this.activitesChoisies.iterator();
         while(i.hasNext()){
-        	Activite activiteChoisie = i.next();
+        	Activite activiteChoisie = this.activites.get(i.next());
         	XYChart.Series<String,Number> series = new XYChart.Series<String,Number>();
             series.setName(activiteChoisie.nom);       
             series.getData().add(new XYChart.Data<String,Number>("aujourd'hui", activiteChoisie.dureeDuJour));
@@ -312,40 +329,53 @@ public class Main extends Application {
 	 * Ajout des activités dans le groupe dédié
 	 * nécessite le nombre des activités choisies, et le nom et l'image de chaque activité
 	 */
-	private void ajoutActivites(GridPane grilleActivites,Group moyenne) {
+	private void ajoutActivites() {
 		grilleActivites.setHgap(6); 
 		grilleActivites.setVgap(6);
 		grilleActivites.getChildren().clear();
-		Iterator<Activite> i = this.activitesChoisies.iterator();
+		Iterator<String> i = this.activitesChoisies.iterator();
 		int cpt = 0;
-        while (i.hasNext()){
-        	// ajout du bouton compteur à la grille d'activités
-        	Activite activite = i.next();
-            Button buttonActivite = new Button(activite.nom);
-            File f = new File(activite.imageAdresseFichier);
-            Image image = new Image(f.toURI().toString());
-            ImageView icon = new ImageView(image); 
-            icon.setFitHeight(100);
-            icon.setFitWidth(100);
-            icon.setPreserveRatio(true);
-            buttonActivite.setGraphic(icon);
-            GridPane.setConstraints(buttonActivite, 0, cpt);
-            grilleActivites.getChildren().add(buttonActivite);
-            cpt ++;
-            // ajout des actions de compteur sur les boutons
-            buttonActivite.setOnAction(new EventHandler<ActionEvent>() {
-                @Override public void handle(ActionEvent e) {
-                	//déclencher ou stopper le compteur
-                	activite.compter();
-                	// mettre à jour les diagrammes
-                	miseAJourDiagrammeDuJour();
-                	miseAJourEnregistrements();
-                	miseAJourMoyenne(moyenne);
-                }
-            });
-                 
-             }
-     }
+		while (i.hasNext()){
+			// ajout du bouton compteur à la grille d'activités
+			Activite activite = this.activites.get(i.next());
+			Button buttonActivite = new Button(activite.nom);
+			File f = new File(activite.imageAdresseFichier);
+			Image image = new Image(f.toURI().toString());
+			ImageView icon = new ImageView(image); 
+			icon.setFitHeight(100);
+			icon.setFitWidth(100);
+			icon.setPreserveRatio(true);
+			buttonActivite.setGraphic(icon);
+			GridPane.setConstraints(buttonActivite, 0, cpt);
+			grilleActivites.getChildren().add(buttonActivite);
+			cpt ++;
+			// ajout des actions de compteur sur les boutons
+			buttonActivite.setOnMouseClicked(
+					new EventHandler<MouseEvent>(){
+				@Override
+				public void handle(MouseEvent e){
+					if( e.getButton() == MouseButton.PRIMARY){
+						//déclencher ou stopper le compteur
+						activite.compter();
+						// mettre à jour les diagrammes
+						miseAJourDiagrammeDuJour();
+						miseAJourEnregistrements();
+						miseAJourMoyenne();
+					}
+					if ( e.getButton() == MouseButton.SECONDARY){
+						activite.stopperChrono();
+						grilleActivites.getChildren().remove(buttonActivite);
+						activitesChoisies.remove(activite.nom);
+						activites.put(activite.nom,activite);
+						// mettre à jour les diagrammes
+						miseAJourDiagrammeDuJour();
+						miseAJourEnregistrements();
+						miseAJourMoyenne();
+					}
+				}
+			});
+		}
+	}
 	
 	public void saveToXML(String xml) {
 	    Document dom;
@@ -363,7 +393,7 @@ public class Main extends Application {
 	        Element rootEle = dom.createElement("activites");
 
 	        // create data elements and place them under root
-	        Iterator<Activite> i = this.activitesChoisies.iterator();
+	        Iterator<Activite> i = this.activites.values().iterator();
 	        while (i.hasNext()){
 	        	Activite activite = i.next();
 	        	e = dom.createElement("Activite");
@@ -428,7 +458,7 @@ public class Main extends Application {
 	    }
 	}
 
-	public boolean readXML(String xml,GridPane grilleActivites,Group moyenne) {
+	public boolean readXML(String xml) {
 		Document doc;
 		// Make an  instance of the DocumentBuilderFactory
 		DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
@@ -439,7 +469,6 @@ public class Main extends Application {
 			// XML file
 			doc = db.parse(xml);
 			doc.getDocumentElement().normalize();
-			Element eDoc = doc.getDocumentElement();
 			NodeList nListActivites = doc.getElementsByTagName("Activite");
 			for (int temp = 0; temp < nListActivites.getLength(); temp++) {
 				Node nNode = nListActivites.item(temp);
@@ -478,17 +507,24 @@ public class Main extends Application {
 						}
 
 						Activite activite = new Activite(nom,imageAdresseFichier,dureeDuJour,dureeMoyenne,dureeParJour);
-						this.activitesChoisies.add(activite);
+						this.activites.put(activite.nom,activite);							
+						this.activitesChoisies.add(activite.nom);
+						
 					}
 
 				}
 			}
-
-        	ajoutActivites(grilleActivites,moyenne);
+			Iterator<Activite> i = this.activites.values().iterator(); 
+			while (i.hasNext()){
+				Activite act = i.next();
+				System.out.println("activitees lues dans xml "+act.toString());
+			}
+			ajoutBoutonsMaj();
+        	ajoutActivites();
         	// mettre à jour les diagrammes
         	miseAJourDiagrammeDuJour();
         	miseAJourEnregistrements();
-        	miseAJourMoyenne(moyenne);
+        	miseAJourMoyenne();
 			} catch (ParserConfigurationException pce) {
 				System.out.println(pce.getMessage());
 			} catch (SAXException se) {
