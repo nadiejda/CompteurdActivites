@@ -85,11 +85,6 @@ public class Main extends Application {
 		activites.put("Jeux",new Activite("Jeux","C:/Users/asus/workspace/CompteurdActivitesJavaFX/src/application/ressources/jeux.jpg"));
 		activites.put("Détente",new Activite("Détente","C:/Users/asus/workspace/CompteurdActivitesJavaFX/src/application/ressources/détente.jpg"));
 
-		Iterator<Activite> i = this.activites.values().iterator(); 
-		while (i.hasNext()){
-			Activite activite = i.next();
-			System.out.println("activite initiales"+activite.toString());
-		}
         // la racine du sceneGraph est le root
         Group root = new Group();
         Scene scene = new Scene(root,1200,800);
@@ -257,7 +252,6 @@ public class Main extends Application {
 		Iterator<Activite> i = this.activites.values().iterator(); 
 		while (i.hasNext()){
 			Activite activite = i.next();
-			System.out.println("activite du menu"+activite.toString());
 			final MenuItem activiteItem = new MenuItem(activite.nom);
 	        menuButton.getItems().add(activiteItem);
 	        // ajout des actions d'ajout sur les items du menu
@@ -513,11 +507,6 @@ public class Main extends Application {
 					}
 
 				}
-			}
-			Iterator<Activite> i = this.activites.values().iterator(); 
-			while (i.hasNext()){
-				Activite act = i.next();
-				System.out.println("activitees lues dans xml "+act.toString());
 			}
 			ajoutBoutonsMaj();
         	ajoutActivites();
