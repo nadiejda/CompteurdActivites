@@ -14,6 +14,7 @@ import java.util.Set;
 import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
+import javafx.collections.transformation.SortedList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.stage.Stage;
@@ -175,40 +176,76 @@ public class Main extends Application {
         diagrammeEnregistrements = new LineChart<String,Number>(xAxis,yAxis);
                 
         diagrammeEnregistrements.setTitle("Enregistrements");
-        Iterator<Activite> i = this.activites.values().iterator();
+        Iterator<String> i = this.activitesChoisies.iterator();
         while (i.hasNext()){
-        	Activite activite = i.next();
+        	String activiteChoisie = i.next();
+        	Activite activite = this.activites.get(activiteChoisie);
         	//defining a series
-            XYChart.Series<String,Number> series = new XYChart.Series<String,Number>();
-            series.setName(activite.nom);
+        	ObservableList<Data<String, Number>> data = FXCollections.observableArrayList() ;
+           
+            
+            //XYChart.Series<String,Number> series = new XYChart.Series<String,Number>();
+            //series.setName(activite.nom);
+            
             Iterator<Entry<Jour,Integer>> is = activite.dureeParJour.entrySet().iterator();
             while (is.hasNext()){
             	Entry<Jour,Integer> e= is.next();
             	//populating the series with data
-                series.getData().add(new XYChart.Data<String,Number>(e.getKey().toString(), e.getValue()));
+                //series.getData().add(new XYChart.Data<String,Number>(e.getKey().toString(), e.getValue()));
+                //addData(data, e.getKey().toString(), e.getValue());
+                data.add(new Data<String,Number>(e.getKey().toString(), e.getValue()));
             }
-            diagrammeEnregistrements.getData().add(series);
+            //diagrammeEnregistrements.getData().add(series);
+            SortedList<Data<String, Number>> sortedData = new SortedList<>(data, (data1, data2) -> {
+            	System.out.println("data 1" + data1.getXValue() + " data 2 " + data2.getXValue() + "cmp " + data1.getXValue().compareTo(data2.getXValue()));
+                     return data1.getXValue().compareTo(data2.getXValue());});
+            diagrammeEnregistrements.getData().add(new Series<>(activite.nom,sortedData));
         }
         
         enregistrements.getChildren().add(diagrammeEnregistrements);
 		 
 	}
 	
+	private void addData(ObservableList<Data<String, Number>> data, String stringDate, Integer value) {
+		 Data<String, Number> dataAtDate = data.stream()
+		            .filter(d -> d.getXValue().equals(stringDate))
+		            .findAny()
+		            .orElseGet(() -> {
+		                Data<String, Number> newData = new Data<String, Number>(stringDate, 0.0);
+		                data.add(newData);
+		                return newData ;
+		            }) ;
+		        dataAtDate.setYValue(dataAtDate.getYValue().doubleValue() + value);
+		        
+	}
+
 	private void miseAJourEnregistrements() {
 		diagrammeEnregistrements.getData().clear();
-        Iterator<Activite> i = this.activites.values().iterator();
+
+        Iterator<String> i = this.activitesChoisies.iterator();
         while (i.hasNext()){
-        	Activite activite = i.next();
+        	String activiteChoisie = i.next();
+        	Activite activite = this.activites.get(activiteChoisie);
         	//defining a series
-            XYChart.Series<String,Number> series = new XYChart.Series<String,Number>();
-            series.setName(activite.nom);
+        	ObservableList<Data<String, Number>> data = FXCollections.observableArrayList() ;
+            //XYChart.Series<String,Number> series = new XYChart.Series<String,Number>();
+            //series.setName(activite.nom);
             Iterator<Entry<Jour,Integer>> is = activite.dureeParJour.entrySet().iterator();
             while (is.hasNext()){
             	Entry<Jour,Integer> e= is.next();
             	//populating the series with data
-                series.getData().add(new XYChart.Data<String,Number>(e.getKey().toString(), e.getValue()));
+                //series.getData().add(new XYChart.Data<String,Number>(e.getKey().toString(), e.getValue()));
+                //addData(data, e.getKey().toString(), e.getValue());
+                data.add(new Data<String,Number>(e.getKey().toString(), e.getValue()));
             }
-            diagrammeEnregistrements.getData().add(series);
+            //diagrammeEnregistrements.getData().add(series);
+            SortedList<Data<String, Number>> sortedData = new SortedList<>(data, (data1, data2) -> {
+            	System.out.println("data 1" + data1.getXValue() + " data 2 " + data2.getXValue() + "cmp " + data1.getXValue().compareTo(data2.getXValue()));
+                     return data1.getXValue().compareTo(data2.getXValue());});
+            System.out.println("sorted data "+sortedData);
+            Series<String,Number> series = new Series<>(activite.nom,sortedData);
+            System.out.println("series " + series);
+            diagrammeEnregistrements.getData().add(new Series<>(activite.nom,sortedData));
         }		
 	}
 	/*
@@ -241,6 +278,7 @@ public class Main extends Application {
 						ajoutActivites();
 						// mettre à jour l'affichage
 						miseAJourDiagrammeDuJour();
+						miseAJourEnregistrements();
 						ajoutBoutonsMaj();
 					});
 				}
@@ -261,6 +299,7 @@ public class Main extends Application {
                 	activitesChoisies.add(activite.nom);
                 	ajoutActivites();
 					// mettre à jour l'affichage
+					miseAJourEnregistrements();
 					miseAJourDiagrammeDuJour();
 					ajoutBoutonsMaj();
                 }
@@ -427,6 +466,13 @@ public class Main extends Application {
 	            e.appendChild(eDureeParJour);
 		        rootEle.appendChild(e);
 	        }
+	        Iterator<String> i2 = this.activitesChoisies.iterator();
+	        while(i2.hasNext()){
+	        	String activiteChoisie = i2.next();
+	        	e = dom.createElement("ActiviteChoisie");
+	        	e.appendChild(dom.createTextNode(activiteChoisie));
+	        	rootEle.appendChild(e);
+	        }
 
 	        dom.appendChild(rootEle);
 
@@ -501,13 +547,18 @@ public class Main extends Application {
 						}
 
 						Activite activite = new Activite(nom,imageAdresseFichier,dureeDuJour,dureeMoyenne,dureeParJour);
-						this.activites.put(activite.nom,activite);							
-						this.activitesChoisies.add(activite.nom);
+						this.activites.put(activite.nom,activite);	
 						
 					}
 
 				}
 			}
+			NodeList nListActivitesChoisies = doc.getElementsByTagName("ActiviteChoisie");
+			for (int temp = 0; temp < nListActivitesChoisies.getLength(); temp++) {
+				Node nNode = nListActivitesChoisies.item(temp);
+	        	String activiteChoisie = ((Element) nNode).getTextContent();		
+				this.activitesChoisies.add(activiteChoisie);
+	        }
 			ajoutBoutonsMaj();
         	ajoutActivites();
         	// mettre à jour les diagrammes
