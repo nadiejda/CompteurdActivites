@@ -3,14 +3,17 @@ package application;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.util.Date;
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.Locale;
 import java.util.Map.Entry;
 import java.util.Optional;
 import java.util.Set;
 
+import javafx.animation.KeyFrame;
+import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.collections.ObservableList;
@@ -19,6 +22,7 @@ import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
+import javafx.util.Duration;
 import javafx.scene.Group;
 import javafx.scene.Scene;
 import javafx.scene.chart.Axis;
@@ -70,7 +74,12 @@ public class Main extends Application {
     private Group enregistrements = new Group();
 	private Group moyenne = new Group();
 	
-	private MenuButton menuButton = new MenuButton ("Ajouter une activité"); 
+	private MenuButton menuButton = new MenuButton ("Ajouter une activité");
+	/*
+	private Timer timer;
+	private TimerTask tache;*/
+	private Timeline majDureesChronos;
+	private Jour jourActuel;
 	
 	@Override
 	public void start(Stage primaryStage) {
@@ -86,6 +95,9 @@ public class Main extends Application {
 		activites.put("Jeux",new Activite("Jeux","C:/Users/asus/workspace/CompteurdActivitesJavaFX/src/application/ressources/jeux.jpg"));
 		activites.put("Détente",new Activite("Détente","C:/Users/asus/workspace/CompteurdActivitesJavaFX/src/application/ressources/détente.jpg"));
 
+		Calendar date = Calendar.getInstance(Locale.FRENCH);
+		jourActuel = new Jour(date);
+		
         // la racine du sceneGraph est le root
         Group root = new Group();
         Scene scene = new Scene(root,1200,800);
@@ -123,8 +135,11 @@ public class Main extends Application {
         tab2.setContent(enregistrements);
         ajoutEnregistrements();
         
-
+        // maj régulière des enregistrements
+        lancerTimerMajEnregistrements();
+        // lecture des enregistrements passés
         readXML(xmlAdresseFichier);
+        
         // ajout des onglets à la racine du SceneGraph
 		root.getChildren().add(tabPane);
         // ajout de la scène à la fenêtre
@@ -133,11 +148,66 @@ public class Main extends Application {
        	
        	primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
             public void handle(WindowEvent we) {
+            	Iterator<String> i = activitesChoisies.iterator();
+        		while (i.hasNext()){
+        			// stopper tous les chronos
+        			Activite activite = activites.get(i.next());
+        			activite.stopperChronoEtSauvegardeDonnees();
+        		}
                 saveToXML(xmlAdresseFichier);
+                stopperTimerMajEnregistrements();
             }
         }); 
 	}
 	
+	protected void stopperTimerMajEnregistrements() {
+		majDureesChronos.stop();
+	}
+
+	private void lancerTimerMajEnregistrements() {
+
+		majDureesChronos = new Timeline(new KeyFrame(Duration.seconds(1), new EventHandler<ActionEvent>() {
+
+			@Override
+			public void handle(ActionEvent event) {
+				// sauvegarde des valeurs si on dépasse minuit
+				// et RAZ de la durée du jour
+				Calendar date = Calendar.getInstance(Locale.FRENCH);
+				if (!jourActuel.equals(new Jour(date))){
+					// RAZ des chronos et de la durée du jour
+					Iterator<String> i = activitesChoisies.iterator();
+					while (i.hasNext()){
+						Activite activite = activites.get(i.next());
+						if (activite.estLanceChrono){
+							//arrêt du chrono et sauvegarde des enregistrements
+							activite.stopperChronoEtSauvegardeDonnees();
+							//redémarrage du chrono
+							activite.lancerChrono();
+						}
+						else {
+							activite.enregistrerDonneesDuJour(jourActuel);
+							activite.majMoyenne();
+							}
+						activite.setDureeDuJour(0);
+					}
+					jourActuel=new Jour(date);
+				}
+				// comptage des chronos et ajout aux diagrammes
+				Iterator<String> i = activitesChoisies.iterator();
+				while (i.hasNext()){
+					Activite activite = activites.get(i.next());
+					activite.majDureesDuJourParChrono();
+				}
+				// maj des diagrammes
+				miseAJourMoyenne();
+				miseAJourEnregistrements();
+				miseAJourDiagrammeDuJour();
+			}
+		}));
+		majDureesChronos.setCycleCount(Timeline.INDEFINITE);
+		majDureesChronos.play();
+	}
+
 	private void ajoutMoyenne() { 
 		ObservableList<PieChart.Data> pieChartData = FXCollections.observableArrayList();
 		Iterator<Activite> i = this.activites.values().iterator();
@@ -174,7 +244,8 @@ public class Main extends Application {
         xAxis.setLabel("Jour");
         //creating the chart
         diagrammeEnregistrements = new LineChart<String,Number>(xAxis,yAxis);
-                
+        diagrammeEnregistrements.setAnimated(false);
+
         diagrammeEnregistrements.setTitle("Enregistrements");
         Iterator<String> i = this.activitesChoisies.iterator();
         while (i.hasNext()){
@@ -182,36 +253,28 @@ public class Main extends Application {
         	Activite activite = this.activites.get(activiteChoisie);
         	//defining a series
         	ObservableList<Data<String, Number>> data = FXCollections.observableArrayList() ;
-           
-            
-            //XYChart.Series<String,Number> series = new XYChart.Series<String,Number>();
-            //series.setName(activite.nom);
-            
-            Iterator<Entry<Jour,Integer>> is = activite.dureeParJour.entrySet().iterator();
-            while (is.hasNext()){
-            	Entry<Jour,Integer> e= is.next();
-            	//populating the series with data
-                //series.getData().add(new XYChart.Data<String,Number>(e.getKey().toString(), e.getValue()));
-                //addData(data, e.getKey().toString(), e.getValue());
-                data.add(new Data<String,Number>(e.getKey().toString(), e.getValue()));
-            }
-            //diagrammeEnregistrements.getData().add(series);
-            SortedList<Data<String, Number>> sortedData = new SortedList<>(data, (data1, data2) -> {
-            	System.out.println("data 1" + data1.getXValue() + " data 2 " + data2.getXValue() + "cmp " + data1.getXValue().compareTo(data2.getXValue()));
-                     return data1.getXValue().compareTo(data2.getXValue());});
-            diagrammeEnregistrements.getData().add(new Series<>(activite.nom,sortedData));
+        	Iterator<Entry<Jour,Long>> is = activite.dureeParJour.entrySet().iterator();
+        	while (is.hasNext()){
+        		Entry<Jour,Long> e= is.next();
+        		//populating the series with data
+        		//addData(data, e.getKey().toString(), e.getValue());
+        		data.add(new Data<String,Number>(e.getKey().toString(), e.getValue()));
+        	}
+        	SortedList<Data<String, Number>> sortedData = new SortedList<>(data, (data1, data2) -> 
+        	data1.getXValue().compareTo(data2.getXValue()));
+        	diagrammeEnregistrements.getData().add(new Series<>(activite.nom,sortedData));
         }
-        
+
         enregistrements.getChildren().add(diagrammeEnregistrements);
-		 
+
 	}
-	
+
 	private void addData(ObservableList<Data<String, Number>> data, String stringDate, Integer value) {
-		 Data<String, Number> dataAtDate = data.stream()
-		            .filter(d -> d.getXValue().equals(stringDate))
-		            .findAny()
-		            .orElseGet(() -> {
-		                Data<String, Number> newData = new Data<String, Number>(stringDate, 0.0);
+		Data<String, Number> dataAtDate = data.stream()
+				.filter(d -> d.getXValue().equals(stringDate))
+				.findAny()
+				.orElseGet(() -> {
+					Data<String, Number> newData = new Data<String, Number>(stringDate, 0.0);
 		                data.add(newData);
 		                return newData ;
 		            }) ;
@@ -228,23 +291,15 @@ public class Main extends Application {
         	Activite activite = this.activites.get(activiteChoisie);
         	//defining a series
         	ObservableList<Data<String, Number>> data = FXCollections.observableArrayList() ;
-            //XYChart.Series<String,Number> series = new XYChart.Series<String,Number>();
-            //series.setName(activite.nom);
-            Iterator<Entry<Jour,Integer>> is = activite.dureeParJour.entrySet().iterator();
+            Iterator<Entry<Jour,Long>> is = activite.dureeParJour.entrySet().iterator();
             while (is.hasNext()){
-            	Entry<Jour,Integer> e= is.next();
+            	Entry<Jour,Long> e= is.next();
             	//populating the series with data
-                //series.getData().add(new XYChart.Data<String,Number>(e.getKey().toString(), e.getValue()));
-                //addData(data, e.getKey().toString(), e.getValue());
                 data.add(new Data<String,Number>(e.getKey().toString(), e.getValue()));
             }
             //diagrammeEnregistrements.getData().add(series);
-            SortedList<Data<String, Number>> sortedData = new SortedList<>(data, (data1, data2) -> {
-            	System.out.println("data 1" + data1.getXValue() + " data 2 " + data2.getXValue() + "cmp " + data1.getXValue().compareTo(data2.getXValue()));
-                     return data1.getXValue().compareTo(data2.getXValue());});
-            System.out.println("sorted data "+sortedData);
-            Series<String,Number> series = new Series<>(activite.nom,sortedData);
-            System.out.println("series " + series);
+            SortedList<Data<String, Number>> sortedData = new SortedList<>(data, (data1, data2) -> 
+                      data1.getXValue().compareTo(data2.getXValue()));
             diagrammeEnregistrements.getData().add(new Series<>(activite.nom,sortedData));
         }		
 	}
@@ -291,21 +346,21 @@ public class Main extends Application {
 		while (i.hasNext()){
 			Activite activite = i.next();
 			final MenuItem activiteItem = new MenuItem(activite.nom);
-	        menuButton.getItems().add(activiteItem);
-	        // ajout des actions d'ajout sur les items du menu
-            activiteItem.setOnAction(new EventHandler<ActionEvent>() {
-                @Override public void handle(ActionEvent e) {
-                	//ajouter l'activité sélectionnée
-                	activitesChoisies.add(activite.nom);
-                	ajoutActivites();
+			menuButton.getItems().add(activiteItem);
+			// ajout des actions d'ajout sur les items du menu
+			activiteItem.setOnAction(new EventHandler<ActionEvent>() {
+				@Override public void handle(ActionEvent e) {
+					//ajouter l'activité sélectionnée
+					activitesChoisies.add(activite.nom);
+					ajoutActivites();
 					// mettre à jour l'affichage
 					miseAJourEnregistrements();
 					miseAJourDiagrammeDuJour();
 					ajoutBoutonsMaj();
-                }
-            });
+				}
+			});
 		}
-        GridPane.setConstraints(menuButton,0,0);
+		GridPane.setConstraints(menuButton,0,0);
         majActivites.getChildren().add(menuButton);
 
         // ajout du bouton pour changer de vue
@@ -352,7 +407,7 @@ public class Main extends Application {
         	Activite activiteChoisie = this.activites.get(i.next());
         	XYChart.Series<String,Number> series = new XYChart.Series<String,Number>();
             series.setName(activiteChoisie.nom);       
-            series.getData().add(new XYChart.Data<String,Number>("aujourd'hui", activiteChoisie.dureeDuJour));
+            series.getData().add(new XYChart.Data<String,Number>("aujourd'hui", activiteChoisie.dureeDuJour+activiteChoisie.chronoTemp));
             series.getData().add(new XYChart.Data<String,Number>("jours précédents", activiteChoisie.dureeMoyenne));
             diagrammeDuJour.getData().add(series);
         }
@@ -396,10 +451,9 @@ public class Main extends Application {
 						miseAJourMoyenne();
 					}
 					if ( e.getButton() == MouseButton.SECONDARY){
-						activite.stopperChrono();
+						activite.stopperChronoEtSauvegardeDonnees();
 						grilleActivites.getChildren().remove(buttonActivite);
 						activitesChoisies.remove(activite.nom);
-						activites.put(activite.nom,activite);
 						// mettre à jour les diagrammes
 						miseAJourDiagrammeDuJour();
 						miseAJourEnregistrements();
@@ -409,93 +463,95 @@ public class Main extends Application {
 			});
 		}
 	}
-	
+
 	public void saveToXML(String xml) {
-	    Document dom;
-	    Element e = null;
+		Document dom;
+		Element e = null;
 
-	    // instance of a DocumentBuilderFactory
-	    DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
-	    try {
-	        // use factory to get an instance of document builder
-	        DocumentBuilder db = dbf.newDocumentBuilder();
-	        // create instance of DOM
-	        dom = db.newDocument();
+		// instance of a DocumentBuilderFactory
+		DocumentBuilderFactory dbf = DocumentBuilderFactory.newInstance();
+		try {
+			// use factory to get an instance of document builder
+			DocumentBuilder db = dbf.newDocumentBuilder();
+			// create instance of DOM
+			dom = db.newDocument();
 
-	        // create the root element
-	        Element rootEle = dom.createElement("activites");
+			// create the root element
+			Element rootEle = dom.createElement("activites");
 
-	        // create data elements and place them under root
-	        Iterator<Activite> i = this.activites.values().iterator();
-	        while (i.hasNext()){
-	        	Activite activite = i.next();
-	        	e = dom.createElement("Activite");
-	        	Element eNom = dom.createElement("Nom");
-	        	eNom.appendChild(dom.createTextNode(activite.nom));
-	        	e.appendChild(eNom);
-	        	Element eImage = dom.createElement("ImageAdresse");
-		        eImage.appendChild(dom.createTextNode(activite.imageAdresseFichier));
-		        e.appendChild(eImage);
-		        Element eDureeDuJour = dom.createElement("DureeDuJour");
-		        eDureeDuJour.appendChild(dom.createTextNode(""+activite.dureeDuJour));
-		        e.appendChild(eDureeDuJour);
-		        Element eDureeMoyenne = dom.createElement("DureeMoyenne");
-		        eDureeMoyenne.appendChild(dom.createTextNode(""+activite.dureeMoyenne));
-		        e.appendChild(eDureeMoyenne);
-		        Element eDureeParJour = dom.createElement("DureeParJour");
-		        Iterator<Entry<Jour,Integer>> is = activite.dureeParJour.entrySet().iterator();
-	            while (is.hasNext()){
-	            	Entry<Jour,Integer> entry= is.next();
-	            	Element eEntry = dom.createElement("Entree");
-	            	Element eDate = dom.createElement("Date");
-	            	Element eJour = dom.createElement("Jour");
-	            	eJour.appendChild(dom.createTextNode(""+entry.getKey().jour));
-	            	eDate.appendChild(eJour);
-	            	Element eMois = dom.createElement("Mois");
-	            	eMois.appendChild(dom.createTextNode(""+entry.getKey().mois));
-	            	eDate.appendChild(eMois);
-	            	Element eAnnee = dom.createElement("Annee");
-	            	eAnnee.appendChild(dom.createTextNode(""+entry.getKey().annee));
-	            	eDate.appendChild(eAnnee);
-	            	eEntry.appendChild(eDate);
-	            	Element eDuree = dom.createElement("Duree");
-	            	eDuree.appendChild(dom.createTextNode(""+entry.getValue().intValue()));
-	            	eEntry.appendChild(eDuree);
-	            	eDureeParJour.appendChild(eEntry);
-	            }
-	            e.appendChild(eDureeParJour);
-		        rootEle.appendChild(e);
-	        }
-	        Iterator<String> i2 = this.activitesChoisies.iterator();
-	        while(i2.hasNext()){
-	        	String activiteChoisie = i2.next();
-	        	e = dom.createElement("ActiviteChoisie");
-	        	e.appendChild(dom.createTextNode(activiteChoisie));
-	        	rootEle.appendChild(e);
-	        }
+			// create data elements and place them under root
+			Iterator<Activite> i = this.activites.values().iterator();
+			while (i.hasNext()){
+				Activite activite = i.next();
+				activite.enregistrerDonneesDuJour(jourActuel);
+				activite.setDureeDuJour(0);
+				e = dom.createElement("Activite");
+				Element eNom = dom.createElement("Nom");
+				eNom.appendChild(dom.createTextNode(activite.nom));
+				e.appendChild(eNom);
+				Element eImage = dom.createElement("ImageAdresse");
+				eImage.appendChild(dom.createTextNode(activite.imageAdresseFichier));
+				e.appendChild(eImage);
+				Element eDureeDuJour = dom.createElement("DureeDuJour");
+				eDureeDuJour.appendChild(dom.createTextNode(""+activite.dureeDuJour));
+				e.appendChild(eDureeDuJour);
+				Element eDureeMoyenne = dom.createElement("DureeMoyenne");
+				eDureeMoyenne.appendChild(dom.createTextNode(""+activite.dureeMoyenne));
+				e.appendChild(eDureeMoyenne);
+				Element eDureeParJour = dom.createElement("DureeParJour");
+				Iterator<Entry<Jour,Long>> is = activite.dureeParJour.entrySet().iterator();
+				while (is.hasNext()){
+					Entry<Jour,Long> entry= is.next();
+					Element eEntry = dom.createElement("Entree");
+					Element eDate = dom.createElement("Date");
+					Element eJour = dom.createElement("Jour");
+					eJour.appendChild(dom.createTextNode(""+entry.getKey().jour));
+					eDate.appendChild(eJour);
+					Element eMois = dom.createElement("Mois");
+					eMois.appendChild(dom.createTextNode(""+entry.getKey().mois));
+					eDate.appendChild(eMois);
+					Element eAnnee = dom.createElement("Annee");
+					eAnnee.appendChild(dom.createTextNode(""+entry.getKey().annee));
+					eDate.appendChild(eAnnee);
+					eEntry.appendChild(eDate);
+					Element eDuree = dom.createElement("Duree");
+					eDuree.appendChild(dom.createTextNode(""+entry.getValue().longValue()));
+					eEntry.appendChild(eDuree);
+					eDureeParJour.appendChild(eEntry);
+				}
+				e.appendChild(eDureeParJour);
+				rootEle.appendChild(e);
+			}
+			Iterator<String> i2 = this.activitesChoisies.iterator();
+			while(i2.hasNext()){
+				String activiteChoisie = i2.next();
+				e = dom.createElement("ActiviteChoisie");
+				e.appendChild(dom.createTextNode(activiteChoisie));
+				rootEle.appendChild(e);
+			}
 
-	        dom.appendChild(rootEle);
+			dom.appendChild(rootEle);
 
-	        try {
-	            Transformer tr = TransformerFactory.newInstance().newTransformer();
-	            tr.setOutputProperty(OutputKeys.INDENT, "yes");
-	            tr.setOutputProperty(OutputKeys.METHOD, "xml");
-	            tr.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
-	            //tr.setOutputProperty(OutputKeys.DOCTYPE_SYSTEM, "roles.dtd");
-	            tr.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
+			try {
+				Transformer tr = TransformerFactory.newInstance().newTransformer();
+				tr.setOutputProperty(OutputKeys.INDENT, "yes");
+				tr.setOutputProperty(OutputKeys.METHOD, "xml");
+				tr.setOutputProperty(OutputKeys.ENCODING, "UTF-8");
+				//tr.setOutputProperty(OutputKeys.DOCTYPE_SYSTEM, "roles.dtd");
+				tr.setOutputProperty("{http://xml.apache.org/xslt}indent-amount", "4");
 
-	            // send DOM to file
-	            tr.transform(new DOMSource(dom), 
-	                                 new StreamResult(new FileOutputStream(xml)));
+				// send DOM to file
+				tr.transform(new DOMSource(dom), 
+						new StreamResult(new FileOutputStream(xml)));
 
-	        } catch (TransformerException te) {
-	            System.out.println(te.getMessage());
-	        } catch (IOException ioe) {
-	            System.out.println(ioe.getMessage());
-	        }
-	    } catch (ParserConfigurationException pce) {
-	        System.out.println("UsersXML: Error trying to instantiate DocumentBuilder " + pce);
-	    }
+			} catch (TransformerException te) {
+				System.out.println(te.getMessage());
+			} catch (IOException ioe) {
+				System.out.println(ioe.getMessage());
+			}
+		} catch (ParserConfigurationException pce) {
+			System.out.println("UsersXML: Error trying to instantiate DocumentBuilder " + pce);
+		}
 	}
 
 	public boolean readXML(String xml) {
@@ -517,22 +573,22 @@ public class Main extends Application {
 				String nom;
 				String imageAdresseFichier;
 				long dureeDuJour;
-				int dureeMoyenne ; 
-				HashMap<Jour,Integer> dureeParJour = new HashMap<Jour,Integer>();
+				long dureeMoyenne ; 
+				HashMap<Jour,Long> dureeParJour = new HashMap<Jour,Long>();
 
 				if (nNode.getNodeType() == Node.ELEMENT_NODE) {
 					Element eElement = (Element) nNode;
 					nom = eElement.getElementsByTagName("Nom").item(0).getTextContent();
 					imageAdresseFichier = eElement.getElementsByTagName("ImageAdresse").item(0).getTextContent();
 					dureeDuJour = Long.valueOf(eElement.getElementsByTagName("DureeDuJour").item(0).getTextContent()).longValue();
-					dureeMoyenne = Integer.parseInt(eElement.getElementsByTagName("DureeMoyenne").item(0).getTextContent());
+					dureeMoyenne = Long.parseLong(eElement.getElementsByTagName("DureeMoyenne").item(0).getTextContent());
 
 					NodeList nListEntrees = eElement.getElementsByTagName("Entree");
 					for (int temp2 = 0; temp2 < nListEntrees.getLength(); temp2++) {
 						Node nNodeEntree = nListEntrees.item(temp2);
 						if (nNodeEntree.getNodeType() == Node.ELEMENT_NODE) {
 							Element eEntree = (Element) nNodeEntree;
-							
+
 							int jour;
 							int mois;
 							int annee;
@@ -542,13 +598,15 @@ public class Main extends Application {
 							mois = Integer.parseInt(eDate.getElementsByTagName("Mois").item(0).getTextContent());
 							annee = Integer.parseInt(eDate.getElementsByTagName("Annee").item(0).getTextContent());
 							Jour date = new Jour(jour,mois,annee);
-							int duree = Integer.parseInt(eEntree.getElementsByTagName("Duree").item(0).getTextContent());
-							dureeParJour.put(date, new Integer(duree));
+							long duree = Long.parseLong(eEntree.getElementsByTagName("Duree").item(0).getTextContent());
+							dureeParJour.put(date, new Long(duree));
 						}
 
 						Activite activite = new Activite(nom,imageAdresseFichier,dureeDuJour,dureeMoyenne,dureeParJour);
+						activite.lireDonneesDuJour();
+						activite.majMoyenne();
 						this.activites.put(activite.nom,activite);	
-						
+
 					}
 
 				}
@@ -556,26 +614,26 @@ public class Main extends Application {
 			NodeList nListActivitesChoisies = doc.getElementsByTagName("ActiviteChoisie");
 			for (int temp = 0; temp < nListActivitesChoisies.getLength(); temp++) {
 				Node nNode = nListActivitesChoisies.item(temp);
-	        	String activiteChoisie = ((Element) nNode).getTextContent();		
+				String activiteChoisie = ((Element) nNode).getTextContent();		
 				this.activitesChoisies.add(activiteChoisie);
-	        }
-			ajoutBoutonsMaj();
-        	ajoutActivites();
-        	// mettre à jour les diagrammes
-        	miseAJourDiagrammeDuJour();
-        	miseAJourEnregistrements();
-        	miseAJourMoyenne();
-			} catch (ParserConfigurationException pce) {
-				System.out.println(pce.getMessage());
-			} catch (SAXException se) {
-				System.out.println(se.getMessage());
-			} catch (IOException ioe) {
-				System.err.println(ioe.getMessage());
 			}
-
-			return false;
+			ajoutBoutonsMaj();
+			ajoutActivites();
+			// mettre à jour les diagrammes
+			miseAJourDiagrammeDuJour();
+			miseAJourEnregistrements();
+			miseAJourMoyenne();
+		} catch (ParserConfigurationException pce) {
+			System.out.println(pce.getMessage());
+		} catch (SAXException se) {
+			System.out.println(se.getMessage());
+		} catch (IOException ioe) {
+			System.err.println(ioe.getMessage());
 		}
-		public static void main(String[] args) {
+
+		return false;
+	}
+	public static void main(String[] args) {
 		launch(args);
 	}
 }
