@@ -345,20 +345,22 @@ public class Main extends Application {
 		Iterator<Activite> i = this.activites.values().iterator(); 
 		while (i.hasNext()){
 			Activite activite = i.next();
-			final MenuItem activiteItem = new MenuItem(activite.nom);
-			menuButton.getItems().add(activiteItem);
-			// ajout des actions d'ajout sur les items du menu
-			activiteItem.setOnAction(new EventHandler<ActionEvent>() {
-				@Override public void handle(ActionEvent e) {
-					//ajouter l'activité sélectionnée
-					activitesChoisies.add(activite.nom);
-					ajoutActivites();
-					// mettre à jour l'affichage
-					miseAJourEnregistrements();
-					miseAJourDiagrammeDuJour();
-					ajoutBoutonsMaj();
-				}
-			});
+			if(!activitesChoisies.contains(activite.nom)){
+				final MenuItem activiteItem = new MenuItem(activite.nom);
+				menuButton.getItems().add(activiteItem);
+				// ajout des actions d'ajout sur les items du menu
+				activiteItem.setOnAction(new EventHandler<ActionEvent>() {
+					@Override public void handle(ActionEvent e) {
+						//ajouter l'activité sélectionnée
+						activitesChoisies.add(activite.nom);
+						ajoutActivites();
+						// mettre à jour l'affichage
+						miseAJourEnregistrements();
+						miseAJourDiagrammeDuJour();
+						ajoutBoutonsMaj();
+					}
+				});
+			}
 		}
 		GridPane.setConstraints(menuButton,0,0);
         majActivites.getChildren().add(menuButton);
@@ -458,6 +460,7 @@ public class Main extends Application {
 						miseAJourDiagrammeDuJour();
 						miseAJourEnregistrements();
 						miseAJourMoyenne();
+						ajoutBoutonsMaj();
 					}
 				}
 			});
