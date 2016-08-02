@@ -12,7 +12,7 @@ import java.util.Map.Entry;
 public class Activite {
 	protected String nom;
 	protected String imageAdresseFichier;
-	protected long dureeDuJour; // en sec.
+	protected long dureeDuJour; // en msec.
 	protected long dureeMoyenne;
 	protected HashMap<Jour,Long> dureeParJour = new HashMap<Jour,Long>();
 	
@@ -70,7 +70,7 @@ public class Activite {
 		if (estLanceChrono){
 			chronoTemp=0;
 			long chrono2 = System.currentTimeMillis() ;
-			dureeDuJour += (chrono2-chrono)/1000;
+			dureeDuJour += (chrono2-chrono);
 			System.out.println("durée du jour "+ dureeDuJour);
 			Calendar date = Calendar.getInstance(Locale.FRENCH);
 			enregistrerDonneesDuJour(new Jour(date));
@@ -110,7 +110,7 @@ public class Activite {
 	public void majDureesDuJourParChrono() {
 		if (estLanceChrono){
 			long chrono2=System.currentTimeMillis();
-			chronoTemp=(chrono2-chrono)/1000;
+			chronoTemp=(chrono2-chrono);
 			Calendar date = Calendar.getInstance(Locale.FRENCH);
 			this.dureeParJour.put(new Jour(date), ( dureeDuJour+chronoTemp));
 			majMoyenne();

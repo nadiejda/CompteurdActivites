@@ -3,7 +3,11 @@ package application;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.Calendar;
+import java.util.Collections;
+import java.util.Date;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -35,7 +39,6 @@ import javafx.scene.chart.XYChart;
 import javafx.scene.chart.XYChart.Data;
 import javafx.scene.chart.XYChart.Series;
 import javafx.scene.control.Button;
-import javafx.scene.control.Menu;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SeparatorMenuItem;
@@ -62,8 +65,8 @@ public class Main extends Application {
 	private HashMap<String,Activite> activites=  new HashMap<String,Activite>();
 	private Set<String> activitesChoisies = new HashSet<String>();
 	
-	private BarChart<String,Number> diagrammeDuJour;
-	private LineChart<String, Number> diagrammeEnregistrements;
+	private BarChart<String, Number> diagrammeDuJour;
+	private LineChart<Date, Number> diagrammeEnregistrements;
 	private PieChart diagrammeMoyenne ;
 	
 	private String xmlAdresseFichier  = "enregistrementsActivites.xml";
@@ -85,8 +88,8 @@ public class Main extends Application {
 	public void start(Stage primaryStage) {
         // définit la largeur et la hauteur de la fenêtre
         // en pixels, le (0, 0) se situe en haut à gauche de la fenêtre
-        primaryStage.setWidth(1200);
-        primaryStage.setHeight(800);
+        primaryStage.setWidth(700);
+        primaryStage.setHeight(700);
         // met un titre dans la fenêtre
         primaryStage.setTitle("Compteur d'activités");
         
@@ -100,7 +103,7 @@ public class Main extends Application {
 		
         // la racine du sceneGraph est le root
         Group root = new Group();
-        Scene scene = new Scene(root,1200,800);
+        Scene scene = new Scene(root,700,700);
 		scene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
 		scene.setFill(Color.SKYBLUE);
         
@@ -237,16 +240,52 @@ public class Main extends Application {
 	}
 	
 	private void ajoutEnregistrements() {
-        
+
 		//defining the axes
-        final Axis<String> xAxis = new CategoryAxis();
+        final DateAxis xAxis = new DateAxis();
         final NumberAxis yAxis = new NumberAxis();
         xAxis.setLabel("Jour");
-        //creating the chart
-        diagrammeEnregistrements = new LineChart<String,Number>(xAxis,yAxis);
+        yAxis.setLabel("Durée");
+        //creating the chart 
+        diagrammeEnregistrements = new LineChart<Date,Number>(xAxis,yAxis);
         diagrammeEnregistrements.setAnimated(false);
-
         diagrammeEnregistrements.setTitle("Enregistrements");
+        
+        Iterator<String> i = this.activitesChoisies.iterator();
+        while (i.hasNext()){
+        	String activiteChoisie = i.next();
+        	Activite activite = this.activites.get(activiteChoisie);
+        	//defining a series
+        	ObservableList<Data<Date, Number>> serie = FXCollections.observableArrayList() ;
+        	Iterator<Entry<Jour,Long>> is = activite.dureeParJour.entrySet().iterator();
+        	while (is.hasNext()){
+        		Entry<Jour,Long> e= is.next();
+        		//populating the series with data
+                serie.add(new Data<Date,Number>(new GregorianCalendar(e.getKey().annee, e.getKey().mois, e.getKey().jour).getTime(), e.getValue()));// (new Date()).setTime(e.getValue()-(60*60*1000)));
+        		
+        	}
+        	//SortedList<Data<String, Number>> sortedData = new SortedList<>(data, (data1, data2) -> 
+        	//data1.getXValue().compareTo(data2.getXValue()));
+        	diagrammeEnregistrements.getData().add(new Series<>(activite.nom,serie));
+        }
+        
+        enregistrements.getChildren().add(diagrammeEnregistrements);
+
+	}
+	
+	/*
+private void ajoutEnregistrements2() {
+        
+		//defining the axes
+        final CategoryAxis xAxis = new CategoryAxis();
+        final NumberAxis yAxis = new NumberAxis();
+        xAxis.setLabel("Jour");
+        yAxis.setLabel("Durée");
+        //creating the chart
+        LineChart<String, Number> diagrammeEnregistrements2 = new LineChart<String,Number>(xAxis,yAxis);
+        diagrammeEnregistrements2.setAnimated(false);
+
+        diagrammeEnregistrements2.setTitle("Enregistrements");
         Iterator<String> i = this.activitesChoisies.iterator();
         while (i.hasNext()){
         	String activiteChoisie = i.next();
@@ -257,18 +296,28 @@ public class Main extends Application {
         	while (is.hasNext()){
         		Entry<Jour,Long> e= is.next();
         		//populating the series with data
+                //ObservableList<String> myXaxis = FXCollections.observableArrayList();
+                //myXaxis.add(dateFormat.format(date));
+                //xAxis.setCategories(myXaxis);
         		//addData(data, e.getKey().toString(), e.getValue());
-        		data.add(new Data<String,Number>(e.getKey().toString(), e.getValue()));
+                //data.add(new Data<String,String>(e.getKey().toString(), e.getValue()));
+                data.add(new Data<String,Number>(e.getKey().toString(), e.getValue()));
+        		
         	}
         	SortedList<Data<String, Number>> sortedData = new SortedList<>(data, (data1, data2) -> 
         	data1.getXValue().compareTo(data2.getXValue()));
-        	diagrammeEnregistrements.getData().add(new Series<>(activite.nom,sortedData));
+        	diagrammeEnregistrements2.getData().add(new Series<>(activite.nom,sortedData));
         }
 
+        SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
+        Date date = new Date();
+        date.setTime(e.getValue()-(60*60*1000));
+        dateFormat.format(date);
+        
+    	diagrammeEnregistrements2.getData().get(0).getData().get(0).getYValue().
         enregistrements.getChildren().add(diagrammeEnregistrements);
 
 	}
-
 	private void addData(ObservableList<Data<String, Number>> data, String stringDate, Integer value) {
 		Data<String, Number> dataAtDate = data.stream()
 				.filter(d -> d.getXValue().equals(stringDate))
@@ -280,28 +329,29 @@ public class Main extends Application {
 		            }) ;
 		        dataAtDate.setYValue(dataAtDate.getYValue().doubleValue() + value);
 		        
-	}
+	}*/
 
 	private void miseAJourEnregistrements() {
 		diagrammeEnregistrements.getData().clear();
-
+		 
         Iterator<String> i = this.activitesChoisies.iterator();
         while (i.hasNext()){
         	String activiteChoisie = i.next();
         	Activite activite = this.activites.get(activiteChoisie);
         	//defining a series
-        	ObservableList<Data<String, Number>> data = FXCollections.observableArrayList() ;
-            Iterator<Entry<Jour,Long>> is = activite.dureeParJour.entrySet().iterator();
-            while (is.hasNext()){
-            	Entry<Jour,Long> e= is.next();
-            	//populating the series with data
-                data.add(new Data<String,Number>(e.getKey().toString(), e.getValue()));
-            }
-            //diagrammeEnregistrements.getData().add(series);
-            SortedList<Data<String, Number>> sortedData = new SortedList<>(data, (data1, data2) -> 
-                      data1.getXValue().compareTo(data2.getXValue()));
-            diagrammeEnregistrements.getData().add(new Series<>(activite.nom,sortedData));
-        }		
+        	ObservableList<Data<Date, Number>> serie = FXCollections.observableArrayList() ;
+        	Iterator<Entry<Jour,Long>> is = activite.dureeParJour.entrySet().iterator();
+        	while (is.hasNext()){
+        		Entry<Jour,Long> e= is.next();
+        		//populating the series with data
+                serie.add(new Data<Date,Number>(new GregorianCalendar(e.getKey().annee, e.getKey().mois, e.getKey().jour).getTime(), e.getValue()));
+        		
+        	}
+        	//SortedList<Data<String, Number>> sortedData = new SortedList<>(data, (data1, data2) -> 
+        	//data1.getXValue().compareTo(data2.getXValue()));
+        	diagrammeEnregistrements.getData().add(new Series<>(activite.nom,serie));
+        }
+        
 	}
 	/*
 	 * Ajout des boutons permettant l'ajout d'activités et de changer de vue
@@ -310,6 +360,7 @@ public class Main extends Application {
 	private void ajoutBoutonsMaj( ) {
 		majActivites.getChildren().clear();
 		menuButton.getItems().clear();
+		// Ajout du menu pour ajouter une nouvelle activité avec son image et son nom
         final MenuItem nouvelleActivite = new MenuItem("Autre...");  
 		nouvelleActivite.setOnAction(new EventHandler<ActionEvent>() {
 			@Override public void handle(ActionEvent e){
@@ -341,7 +392,8 @@ public class Main extends Application {
 		});
         menuButton.getItems().add(nouvelleActivite);
         menuButton.getItems().add( new SeparatorMenuItem());
-		// ajout du bouton pour ajouter des activités
+        
+		// ajout du bouton pour ajouter des activités connues
 		Iterator<Activite> i = this.activites.values().iterator(); 
 		while (i.hasNext()){
 			Activite activite = i.next();
@@ -364,7 +416,7 @@ public class Main extends Application {
 		}
 		GridPane.setConstraints(menuButton,0,0);
         majActivites.getChildren().add(menuButton);
-
+/*
         // ajout du bouton pour changer de vue
         Iterator<String> i2 = this.activitesChoisies.iterator();
         final MenuButton menuButton2 = new MenuButton ("Changer de vue");  
@@ -375,7 +427,7 @@ public class Main extends Application {
 		}
         GridPane.setConstraints(menuButton2,1,0);
         majActivites.getChildren().add(menuButton2);
-		
+	*/	
 	}
 
 	/*
@@ -394,10 +446,18 @@ public class Main extends Application {
         while(i.hasNext()){
         	Activite activiteChoisie = this.activites.get(i.next());
         	XYChart.Series<String,Number> series = new XYChart.Series<String,Number>();
-            series.setName(activiteChoisie.nom);       
-            series.getData().add(new XYChart.Data<String,Number>("aujourd'hui", activiteChoisie.dureeDuJour));
+            series.setName(activiteChoisie.nom);    
+            series.getData().add(new XYChart.Data<String,Number>("aujourd'hui",activiteChoisie.dureeDuJour ));
             series.getData().add(new XYChart.Data<String,Number>("jours précédents", activiteChoisie.dureeMoyenne));
             diagrammeDuJour.getData().add(series);
+        	/*ObservableList<Data<String, String>> data = FXCollections.observableArrayList() ;
+            SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
+            Date date = new Date();
+            date.setTime(activiteChoisie.dureeDuJour);
+            data.add(new Data<String,String>("aujourd'hui", dateFormat.format(date).));
+            date.setTime(activiteChoisie.dureeMoyenne);
+            data.add(new Data<String,String>("aujourd'hui", dateFormat.format(date)));
+            diagrammeDuJour.getData().add(new Series<>(activiteChoisie.nom,data));*/
         }
         activitesDuJour.getChildren().add(diagrammeDuJour);
 	}
@@ -412,6 +472,15 @@ public class Main extends Application {
             series.getData().add(new XYChart.Data<String,Number>("aujourd'hui", activiteChoisie.dureeDuJour+activiteChoisie.chronoTemp));
             series.getData().add(new XYChart.Data<String,Number>("jours précédents", activiteChoisie.dureeMoyenne));
             diagrammeDuJour.getData().add(series);
+/*
+        	ObservableList<Data<String, String>> data = FXCollections.observableArrayList() ;
+            SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
+            Date date = new Date();
+            date.setTime(activiteChoisie.dureeDuJour);
+            data.add(new Data<String,String>("aujourd'hui", dateFormat.format(date)));
+            date.setTime(activiteChoisie.dureeMoyenne);
+            data.add(new Data<String,String>("aujourd'hui", dateFormat.format(date)));
+            diagrammeDuJour.getData().add(new Series<>(activiteChoisie.nom,data));*/
         }
 	}
 	
@@ -607,8 +676,10 @@ public class Main extends Application {
 
 						Activite activite = new Activite(nom,imageAdresseFichier,dureeDuJour,dureeMoyenne,dureeParJour);
 						activite.lireDonneesDuJour();
+						activite.enregistrerDonneesDuJour(jourActuel);
 						activite.majMoyenne();
 						this.activites.put(activite.nom,activite);	
+						
 
 					}
 

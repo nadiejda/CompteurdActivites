@@ -9,7 +9,7 @@ public class Jour {
 	
 	public Jour(Calendar date){
 		jour = date.get(Calendar.DAY_OF_MONTH);
-		mois = date.get(Calendar.MONTH)+1;
+		mois = date.get(Calendar.MONTH);
 		annee = date.get(Calendar.YEAR);
 	}
 
