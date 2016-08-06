@@ -3,7 +3,10 @@ package application;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.text.DecimalFormat;
+import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
+import java.time.LocalDate;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
@@ -24,8 +27,10 @@ import javafx.collections.ObservableList;
 import javafx.collections.transformation.SortedList;
 import javafx.event.ActionEvent;
 import javafx.event.EventHandler;
+import javafx.geometry.HPos;
 import javafx.stage.Stage;
 import javafx.stage.WindowEvent;
+import javafx.util.Callback;
 import javafx.util.Duration;
 import javafx.scene.Group;
 import javafx.scene.Scene;
@@ -39,11 +44,16 @@ import javafx.scene.chart.XYChart;
 import javafx.scene.chart.XYChart.Data;
 import javafx.scene.chart.XYChart.Series;
 import javafx.scene.control.Button;
+import javafx.scene.control.DateCell;
+import javafx.scene.control.DatePicker;
+import javafx.scene.control.Label;
 import javafx.scene.control.MenuButton;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.SeparatorMenuItem;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.control.TextField;
+import javafx.scene.control.TextFormatter;
 import javafx.scene.control.TextInputDialog;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -51,8 +61,10 @@ import javafx.scene.input.MouseButton;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.FileChooser;
+import javafx.scene.control.ChoiceBox;
 
 import javax.xml.parsers.*;
 import javax.xml.transform.*;
@@ -62,6 +74,9 @@ import org.xml.sax.*;
 import org.w3c.dom.*;
 
 public class Main extends Application {
+	private Stage stage;
+	private Scene scene;
+	
 	private HashMap<String,Activite> activites=  new HashMap<String,Activite>();
 	private Set<String> activitesChoisies = new HashSet<String>();
 	
@@ -75,6 +90,7 @@ public class Main extends Application {
 	private GridPane grilleActivites = new GridPane();
     private Group activitesDuJour = new Group();
     private Group enregistrements = new Group();
+	private GridPane majEnregistrements = new GridPane();
 	private Group moyenne = new Group();
 	
 	private MenuButton menuButton = new MenuButton ("Ajouter une activité");
@@ -92,7 +108,7 @@ public class Main extends Application {
         primaryStage.setHeight(700);
         // met un titre dans la fenêtre
         primaryStage.setTitle("Compteur d'activités");
-        
+        this.stage = primaryStage;
         // initialisation des variables
         activites.put("Travail",new Activite("Travail","C:/Users/asus/workspace/CompteurdActivitesJavaFX/src/application/ressources/travail.jpg"));
 		activites.put("Jeux",new Activite("Jeux","C:/Users/asus/workspace/CompteurdActivitesJavaFX/src/application/ressources/jeux.jpg"));
@@ -103,7 +119,7 @@ public class Main extends Application {
 		
         // la racine du sceneGraph est le root
         Group root = new Group();
-        Scene scene = new Scene(root,700,700);
+        scene = new Scene(root,700,700);
 		scene.getStylesheets().add(getClass().getResource("application.css").toExternalForm());
 		scene.setFill(Color.SKYBLUE);
         
@@ -122,10 +138,6 @@ public class Main extends Application {
         borderPane.setRight(activitesDuJour);
         ajoutDiagrammeDuJour();    
 
-        // affichage de la moyenne des durées d'activités sous forme de diagramme dans l'onglet moyenne
-        tab3.setContent(moyenne);
-        ajoutMoyenne();
-        
         // ajout des activités à la gauche du border pane
         borderPane.setLeft(grilleActivites);
         ajoutActivites();
@@ -135,9 +147,17 @@ public class Main extends Application {
         ajoutBoutonsMaj();
         
         // affichage des enregistrements précédents sous forme de diagramme dans l'onglet enregistrements
-        tab2.setContent(enregistrements);
+        BorderPane borderPaneEnregistrements = new BorderPane();
+        tab2.setContent(borderPaneEnregistrements);
+        borderPaneEnregistrements.setLeft(enregistrements);
         ajoutEnregistrements();
-        
+        borderPaneEnregistrements.setBottom(majEnregistrements);
+        ajoutMajEnregistrements();
+
+        // affichage de la moyenne des durées d'activités sous forme de diagramme dans l'onglet moyenne
+        tab3.setContent(moyenne);
+        ajoutMoyenne();
+          
         // maj régulière des enregistrements
         lancerTimerMajEnregistrements();
         // lecture des enregistrements passés
@@ -146,8 +166,8 @@ public class Main extends Application {
         // ajout des onglets à la racine du SceneGraph
 		root.getChildren().add(tabPane);
         // ajout de la scène à la fenêtre
-       	primaryStage.setScene(scene);
-       	primaryStage.show();
+       	stage.setScene(scene);
+       	stage.show();
        	
        	primaryStage.setOnCloseRequest(new EventHandler<WindowEvent>() {
             public void handle(WindowEvent we) {
@@ -163,6 +183,7 @@ public class Main extends Application {
         }); 
 	}
 	
+
 	protected void stopperTimerMajEnregistrements() {
 		majDureesChronos.stop();
 	}
@@ -353,6 +374,106 @@ private void ajoutEnregistrements2() {
         }
         
 	}
+	
+	private void ajoutMajEnregistrements() {
+		Button ajoutEnregistrementButton = new Button("Ajout d'enregistrement");
+		ajoutEnregistrementButton.setOnAction(new EventHandler<ActionEvent>() {
+			@Override public void handle(ActionEvent e){
+				VBox vbox = new VBox(20);
+				vbox.setStyle("-fx-padding: 10;");
+				Scene sceneSec = new Scene(vbox, 400, 400);
+				stage.setScene(sceneSec);
+				// Sélection de la date de l'enregistrement
+				DatePicker enregistrementsDatePicker = new DatePicker();
+				enregistrementsDatePicker.setValue(LocalDate.now());
+				final Callback<DatePicker, DateCell> dayCellFactory = 
+						new Callback<DatePicker, DateCell>() {
+					@Override
+					public DateCell call(final DatePicker datePicker) {
+						return new DateCell() {
+							@Override
+							public void updateItem(LocalDate item, boolean empty) {
+								super.updateItem(item, empty);
+
+								if (item.isAfter(LocalDate.now())){// enregistrementsDatePicker.getValue().plusDays(1))
+									setDisable(true);
+									setStyle("-fx-background-color: #ffc0cb;");
+								}   
+							}
+						};
+					}
+				};
+				enregistrementsDatePicker.setDayCellFactory(dayCellFactory);
+				GridPane gridPane = new GridPane();
+				gridPane.setHgap(10);
+				gridPane.setVgap(10);
+				Label enregistrementDateLabel = new Label("Date de l'enregistrement : ");
+				gridPane.add(enregistrementDateLabel, 0, 0);
+				GridPane.setHalignment(enregistrementDateLabel, HPos.LEFT);
+				gridPane.add(enregistrementsDatePicker, 1, 0);
+				// Entrée de la durée de l'enregistrement
+				TextField enregistrementDureeTextField = new TextField();
+				DecimalFormat format = new DecimalFormat( "#" );
+				enregistrementDureeTextField.setTextFormatter( new TextFormatter<>(c ->
+				{
+				    if ( c.getControlNewText().isEmpty() )
+				    {
+				        return c;
+				    }
+
+				    ParsePosition parsePosition = new ParsePosition( 0 );
+				    Object object = format.parse( c.getControlNewText(), parsePosition );
+
+				    if ( object == null || parsePosition.getIndex() < c.getControlNewText().length() )
+				    {
+				        return null;
+				    }
+				    else
+				    {
+				        return c;
+				    }
+				}));
+				Label enregistrementDureeLabel = new Label("Durée de l'enregistrement : ");
+				gridPane.add(enregistrementDureeLabel, 0, 1);
+				GridPane.setHalignment(enregistrementDureeLabel, HPos.LEFT);
+				gridPane.add(enregistrementDureeTextField, 1, 1);
+				// Entrée de l'activité de l'enregistrement
+				ChoiceBox<String> enregistrementActiviteChoiceBox = new ChoiceBox<String>();
+				Iterator<Activite> i = activites.values().iterator(); 
+				while (i.hasNext()){
+					Activite activite = i.next();
+					enregistrementActiviteChoiceBox.getItems().add(activite.nom);
+				}
+				Label enregistrementActiviteLabel = new Label("Activité de l'enregistrement : ");
+				gridPane.add(enregistrementActiviteLabel, 0, 2);
+				GridPane.setHalignment(enregistrementActiviteLabel, HPos.LEFT);
+				gridPane.add(enregistrementActiviteChoiceBox, 1, 2);
+				Button validerEnregistrement = new Button("Ok");
+				validerEnregistrement.setOnAction(new EventHandler<ActionEvent>(){
+					@Override public void  handle(ActionEvent e){
+						Activite activite = activites.get(enregistrementActiviteChoiceBox.getValue());
+						activite.dureeParJour.put(new Jour(enregistrementsDatePicker.getValue()), Long.parseLong(enregistrementDureeTextField.getText()));
+						activite.lireDonneesDuJour();
+				       	stage.setScene(scene);
+				       	stage.show();
+					}
+				});
+				gridPane.add(validerEnregistrement, 0, 3);
+				Button annulerEnregistrement = new Button("Annuler");
+				annulerEnregistrement.setOnAction(new EventHandler<ActionEvent>(){
+					@Override public void  handle(ActionEvent e){
+				       	stage.setScene(scene);
+				       	stage.show();
+					}
+				});
+				gridPane.add(annulerEnregistrement, 1, 3);
+		        vbox.getChildren().add(gridPane);
+			}
+		});
+		majEnregistrements.getChildren().add(ajoutEnregistrementButton);
+	}
+
+	
 	/*
 	 * Ajout des boutons permettant l'ajout d'activités et de changer de vue
 	 * Nécessite une liste des activités possibles et une liste des activités choisies décuplées en sous-activités

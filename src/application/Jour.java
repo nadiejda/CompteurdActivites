@@ -1,5 +1,6 @@
 package application;
 
+import java.time.LocalDate;
 import java.util.Calendar;
 
 public class Jour {
@@ -17,6 +18,12 @@ public class Jour {
 		jour = jour2;
 		mois = mois2;
 		annee = annee2;
+	}
+
+	public Jour(LocalDate value) {
+		jour = value.getDayOfMonth();
+		mois = value.getMonthValue()-1;
+		annee = value.getYear();
 	}
 
 	@Override
